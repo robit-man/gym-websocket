@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Client</title>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const wsUrl = 'ws://localhost:8000/ws'; // Ensure this matches the server port
+
+            function connectWebSocket() {
+                const ws = new WebSocket(wsUrl);
+
+                ws.onopen = function(event) {
+                    console.log('Connected to server');
+                };
+
+                ws.onmessage = function(event) {
+                    console.log('Response from server:', event.data);
+                };
+
+                ws.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                };
+
+                ws.onclose = function(event) {
+                    console.log('WebSocket closed:', event);
+                };
+
+                document.getElementById('sendButton').addEventListener('click', () => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ data: 'Browser data' }));
+                    } else {
+                        console.error('WebSocket is not open:', ws.readyState);
+                    }
+                });
+            }
+
+            // Initialize WebSocket connection
+            connectWebSocket();
+        });
+    </script>
+</head>
+<body>
+    <button id="sendButton">Send Data to Server</button>
+</body>
+</html>
