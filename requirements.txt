@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+gymnasium
+gymnasium[box2d]
+numpy
+stable-baselines3
+stable-baselines3[extra] 
+torch 
+torchvision 
+torchaudio

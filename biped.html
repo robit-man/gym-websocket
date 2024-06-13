@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Client with Three.js</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        #buttonContainer {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+        }
+        #buttonContainer button {
+            display: block;
+            margin-bottom: 10px;
+        }
+    </style>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const wsUrl = 'ws://localhost:8000/ws';
+
+            // Three.js setup
+            let scene, camera, renderer, controls;
+            let bipedal;
+
+            function initThreeJS() {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.set(5, 5, 5);
+                camera.lookAt(0, 1, 0); // Look slightly above the ground
+
+                renderer = new THREE.WebGLRenderer();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(renderer.domElement);
+
+                // Orbit controls
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.target.set(0, 1, 0); // Target slightly above the ground
+                controls.update();
+
+                // Create ground
+                const groundGeometry = new THREE.PlaneGeometry(20, 20);
+                const groundMaterial = new THREE.MeshBasicMaterial({ color: 0xdddddd, side: THREE.DoubleSide });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = Math.PI / 2;
+                scene.add(ground);
+
+                // Create bipedal walker (a simple representation)
+                const bodyGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+                const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.position.y = 2.5; // Raise the body above the ground plane
+                scene.add(body);
+
+                // Create legs
+                const upperLegGeometry = new THREE.BoxGeometry(0.2, 1, 0.2);
+                const lowerLegGeometry = new THREE.BoxGeometry(0.2, 1, 0.2);
+                const footGeometry = new THREE.BoxGeometry(0.3, 0.2, 0.5);
+                const legMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
+                // Left leg
+                const leftHipJoint = new THREE.Object3D();
+                leftHipJoint.position.set(-0.15, -0.5, 0);
+                body.add(leftHipJoint);
+
+                const leftHipPitch = new THREE.Object3D();
+                leftHipJoint.add(leftHipPitch);
+
+                const leftUpperLeg = new THREE.Mesh(upperLegGeometry, legMaterial);
+                leftUpperLeg.position.set(0, -0.5, 0);
+                leftHipPitch.add(leftUpperLeg);
+
+                const leftKneeJoint = new THREE.Object3D();
+                leftKneeJoint.position.set(0, -0.5, 0);
+                leftUpperLeg.add(leftKneeJoint);
+
+                const leftKneePitch = new THREE.Object3D();
+                leftKneeJoint.add(leftKneePitch);
+
+                const leftLowerLeg = new THREE.Mesh(lowerLegGeometry, legMaterial);
+                leftLowerLeg.position.set(0, -0.5, 0);
+                leftKneePitch.add(leftLowerLeg);
+
+                const leftAnkleJoint = new THREE.Object3D();
+                leftAnkleJoint.position.set(0, -0.5, 0);
+                leftLowerLeg.add(leftAnkleJoint);
+
+                const leftAnklePitch = new THREE.Object3D();
+                leftAnkleJoint.add(leftAnklePitch);
+
+                const leftFoot = new THREE.Mesh(footGeometry, legMaterial);
+                leftFoot.position.set(0, -0.1, 0.25);
+                leftAnklePitch.add(leftFoot);
+
+                // Right leg
+                const rightHipJoint = new THREE.Object3D();
+                rightHipJoint.position.set(0.15, -0.5, 0);
+                body.add(rightHipJoint);
+
+                const rightHipPitch = new THREE.Object3D();
+                rightHipJoint.add(rightHipPitch);
+
+                const rightUpperLeg = new THREE.Mesh(upperLegGeometry, legMaterial);
+                rightUpperLeg.position.set(0, -0.5, 0);
+                rightHipPitch.add(rightUpperLeg);
+
+                const rightKneeJoint = new THREE.Object3D();
+                rightKneeJoint.position.set(0, -0.5, 0);
+                rightUpperLeg.add(rightKneeJoint);
+
+                const rightKneePitch = new THREE.Object3D();
+                rightKneeJoint.add(rightKneePitch);
+
+                const rightLowerLeg = new THREE.Mesh(lowerLegGeometry, legMaterial);
+                rightLowerLeg.position.set(0, -0.5, 0);
+                rightKneePitch.add(rightLowerLeg);
+
+                const rightAnkleJoint = new THREE.Object3D();
+                rightAnkleJoint.position.set(0, -0.5, 0);
+                rightLowerLeg.add(rightAnkleJoint);
+
+                const rightAnklePitch = new THREE.Object3D();
+                rightAnkleJoint.add(rightAnklePitch);
+
+                const rightFoot = new THREE.Mesh(footGeometry, legMaterial);
+                rightFoot.position.set(0, -0.1, 0.25);
+                rightAnklePitch.add(rightFoot);
+
+                bipedal = {
+                    body,
+                    leftHipJoint, leftHipPitch, leftUpperLeg, leftKneeJoint, leftKneePitch, leftLowerLeg, leftAnkleJoint, leftAnklePitch, leftFoot,
+                    rightHipJoint, rightHipPitch, rightUpperLeg, rightKneeJoint, rightKneePitch, rightLowerLeg, rightAnkleJoint, rightAnklePitch, rightFoot
+                };
+
+                window.addEventListener('resize', onWindowResize, false);
+
+                animate();
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            function updateSimulation(observations) {
+                let index = 0;
+                function step() {
+                    if (index < observations.length) {
+                        const [bodyPosX, bodyPosY, bodyAngle, leftHipYaw, leftHipRoll, leftHipPitchAngle, leftUpperLegAngle, leftLowerLegAngle, leftAnkleAngle, rightHipYaw, rightHipRoll, rightHipPitchAngle, rightUpperLegAngle, rightLowerLegAngle, rightAnkleAngle] = observations[index];
+
+                        // Update body position and rotation
+                        bipedal.body.position.set(bodyPosX, bodyPosY + 2.5, 0); // Keep the body above the ground
+                        bipedal.body.rotation.z = bodyAngle;
+
+                        // Update hips rotation
+                        bipedal.leftHipJoint.rotation.y = leftHipYaw;
+                        bipedal.leftHipJoint.rotation.z = leftHipRoll;
+                        bipedal.leftHipPitch.rotation.x = leftHipPitchAngle;
+
+                        bipedal.rightHipJoint.rotation.y = rightHipYaw;
+                        bipedal.rightHipJoint.rotation.z = rightHipRoll;
+                        bipedal.rightHipPitch.rotation.x = rightHipPitchAngle;
+
+                        // Update legs rotation
+                        bipedal.leftUpperLeg.rotation.z = leftUpperLegAngle;
+                        bipedal.leftKneeJoint.rotation.z = leftLowerLegAngle;  // Ensure the knee rotates dorsally
+                        bipedal.leftAnkleJoint.rotation.z = leftAnkleAngle;   // Ensure the ankle rotates dorsally
+
+                        bipedal.rightUpperLeg.rotation.z = rightUpperLegAngle;
+                        bipedal.rightKneeJoint.rotation.z = rightLowerLegAngle; // Ensure the knee rotates dorsally
+                        bipedal.rightAnkleJoint.rotation.z = rightAnkleAngle;  // Ensure the ankle rotates dorsally
+
+                        index++;
+                        setTimeout(step, 50);  // Adjust the speed of the animation here
+                    }
+                }
+                step();
+            }
+
+            // Initialize Three.js
+            initThreeJS();
+
+            // WebSocket setup
+            function connectWebSocket() {
+                const ws = new WebSocket(wsUrl);
+
+                ws.onopen = function(event) {
+                    console.log('Connected to server');
+                };
+
+                ws.onmessage = function(event) {
+                    console.log('Raw response from server:', event.data);
+                    try {
+                        const response = JSON.parse(event.data);
+                        if (response.error) {
+                            console.error('Server error:', response.error);
+                        } else if (response.result) {
+                            const observations = response.result.map(step => step.observation);
+                            updateSimulation(observations);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing JSON:', e);
+                    }
+                };
+
+                ws.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                };
+
+                ws.onclose = function(event) {
+                    console.log('WebSocket closed:', event);
+                };
+
+                // Automatically send data to server when connected
+                ws.onopen = function() {
+                    console.log('Connected to server');
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ data: 'Browser data' }));
+                    }
+                };
+            }
+
+            // Initialize WebSocket connection
+            connectWebSocket();
+
+            // Button actions
+            document.getElementById('loadWeightsButton').addEventListener('click', () => {
+                fetch('http://localhost:8000/load_weights')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Weights loaded:', data);
+                        alert('Weights loaded successfully');
+                    })
+                    .catch(error => {
+                        console.error('Error loading weights:', error);
+                        alert('Failed to load weights');
+                    });
+            });
+
+            document.getElementById('exportWeightsButton').addEventListener('click', () => {
+                fetch('http://localhost:8000/export_weights')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Weights exported:', data);
+                        alert('Weights exported successfully');
+                    })
+                    .catch(error => {
+                        console.error('Error exporting weights:', error);
+                        alert('Failed to export weights');
+                    });
+            });
+        });
+    </script>
+</head>
+<body>
+    <div id="buttonContainer">
+        <button id="loadWeightsButton">Load Weights</button>
+        <button id="exportWeightsButton">Export Weights</button>
+    </div>
+</body>
+</html>

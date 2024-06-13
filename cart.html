@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Client with Three.js</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const wsUrl = 'ws://localhost:8000/ws'; // Ensure this matches the server port
+
+            // Three.js setup
+            let scene, camera, renderer;
+            let cart, pole;
+
+            function initThreeJS() {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                renderer = new THREE.WebGLRenderer();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(renderer.domElement);
+
+                // Create cart
+                const cartGeometry = new THREE.BoxGeometry(1, 0.5, 0.5);
+                const cartMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                cart = new THREE.Mesh(cartGeometry, cartMaterial);
+                scene.add(cart);
+
+                // Create pole
+                const poleGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+                const poleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                pole = new THREE.Mesh(poleGeometry, poleMaterial);
+                pole.position.y = 0.5; // Position pole on top of the cart
+                cart.add(pole);
+
+                camera.position.z = 5;
+
+                animate();
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                renderer.render(scene, camera);
+            }
+
+            function updateSimulation(observation) {
+                const [cartPosition, cartVelocity, poleAngle, poleVelocity] = observation;
+
+                // Update cart position
+                cart.position.x = cartPosition;
+
+                // Update pole rotation (assuming the angle is in radians)
+                pole.rotation.z = poleAngle;
+            }
+
+            // Initialize Three.js
+            initThreeJS();
+
+            // WebSocket setup
+            function connectWebSocket() {
+                const ws = new WebSocket(wsUrl);
+
+                ws.onopen = function(event) {
+                    console.log('Connected to server');
+                };
+
+                ws.onmessage = function(event) {
+                    console.log('Response from server:', event.data);
+                    const response = JSON.parse(event.data);
+                    response.result.forEach(step => {
+                        updateSimulation(step.observation);
+                        if (step.done) {
+                            // Reset the cart and pole if the iteration is done
+                            setTimeout(() => {
+                                cart.position.x = 0;
+                                pole.rotation.z = 0;
+                            }, 1000);
+                        }
+                    });
+                };
+
+                ws.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                };
+
+                ws.onclose = function(event) {
+                    console.log('WebSocket closed:', event);
+                };
+
+                document.getElementById('sendButton').addEventListener('click', () => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ data: 'Browser data' }));
+                    } else {
+                        console.error('WebSocket is not open:', ws.readyState);
+                    }
+                });
+            }
+
+            // Initialize WebSocket connection
+            connectWebSocket();
+        });
+    </script>
+</head>
+<body>
+    <button id="sendButton">Send Data to Server</button>
+</body>
+</html>
