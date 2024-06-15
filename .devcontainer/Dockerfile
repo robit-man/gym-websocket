@@ -1,7 +1,13 @@
 # .devcontainer/Dockerfile
 
 # Use the existing base image
-FROM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
+ARG VARIANT="ubuntu20.04" 
+ARG CUDA_VERSION="12.5.0"
+FROM nvidia/cuda:${CUDA_VERSION}-devel-${VARIANT}
+
+# Set environment variables to prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ARG TIMEZONE=America/New_York
 
 # Install necessary packages
 RUN apt-get update && apt-get install -y \
@@ -10,7 +16,12 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     software-properties-common \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure the timezone
+RUN ln -fs /usr/share/zoneinfo/$TIMEZONE /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata
 
 # Add NVIDIA package repositories
 RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin && \
