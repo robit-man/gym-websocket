@@ -1,13 +1,7 @@
 # .devcontainer/Dockerfile
 
 # Use the existing base image
-ARG VARIANT="ubuntu20.04" 
-ARG CUDA_VERSION="12.5.0"
-FROM nvidia/cuda:${CUDA_VERSION}-devel-${VARIANT}
-
-# Set environment variables to prevent interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
-ARG TIMEZONE=America/New_York
+FROM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
 
 # Install necessary packages
 RUN apt-get update && apt-get install -y \
@@ -16,12 +10,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     software-properties-common \
-    tzdata \
     && rm -rf /var/lib/apt/lists/*
-
-# Configure the timezone
-RUN ln -fs /usr/share/zoneinfo/$TIMEZONE /etc/localtime && \
-    dpkg-reconfigure --frontend noninteractive tzdata
 
 # Add NVIDIA package repositories
 RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin && \
@@ -37,6 +26,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcudnn8=8.4.1.50-1+cuda11.7 && \
     rm -rf /var/lib/apt/lists/*
 
+RUN apt-get install swig -y
+
 # Ensure pip is up-to-date
 RUN pip3 install --upgrade pip
 
@@ -48,3 +39,5 @@ WORKDIR /app
 
 # Copy the current directory contents into the container at /app
 COPY . /app
+
+RUN pip3 install -r requirements.txt
