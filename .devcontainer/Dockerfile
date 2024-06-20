@@ -42,8 +42,7 @@ RUN pip3 install torch torchvision torchaudio --extra-index-url https://download
 RUN pip3 install --upgrade pip setuptools
 
 # Set the working directory
-WORKDIR /workspace
+WORKDIR /app
 
 # Copy the current directory contents into the container at /app
-COPY . /workspace
-
+COPY . /app
