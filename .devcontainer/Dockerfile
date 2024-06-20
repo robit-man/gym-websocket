@@ -1,43 +1,49 @@
 # .devcontainer/Dockerfile
 
-# Use the existing base image
-FROM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
+# Use the latest CUDA runtime image
+FROM nvidia/cuda:12.5.0-runtime-ubuntu22.04
+
+# Set environment variable to noninteractive to avoid geographic area prompt
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+
+# Set CUDA environment variables
+ENV PATH=/usr/local/cuda/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
 
 # Install necessary packages
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
+    swig \
+    python3 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
     ca-certificates \
     gnupg \
     software-properties-common \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
-# Add NVIDIA package repositories
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin && \
-    mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \
-    wget https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda-repo-ubuntu2004-11-7-local_11.7.1-515.65.01-1_amd64.deb && \
-    dpkg -i cuda-repo-ubuntu2004-11-7-local_11.7.1-515.65.01-1_amd64.deb && \
-    apt-key add /var/cuda-repo-ubuntu2004-11-7-local/7fa2af80.pub && \
-    apt-get update && \
-    apt-get -y install cuda
+# Set the time zone non-interactively
+RUN ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && dpkg-reconfigure --frontend noninteractive tzdata
 
-# Install cuDNN
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libcudnn8=8.4.1.50-1+cuda11.7 && \
-    rm -rf /var/lib/apt/lists/*
+# Install CUDA toolkit
+RUN apt-get update && apt-get install -y \
+    cuda-toolkit-12-5
 
-RUN apt-get install swig -y
+# Install PyTorch with CUDA 12.5 support
+RUN pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu125
 
-# Ensure pip is up-to-date
-RUN pip3 install --upgrade pip
-
-# Install PyTorch with CUDA support
-RUN pip3 install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1+cu117 -f https://download.pytorch.org/whl/torch_stable.html
+# Ensure pip is up-to-date and install setuptools
+RUN pip3 install --upgrade pip setuptools
 
 # Set the working directory
-WORKDIR /app
+WORKDIR /workspace
 
 # Copy the current directory contents into the container at /app
-COPY . /app
+COPY . /workspace
 
-RUN pip3 install -r requirements.txt
